@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .video-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        video {
+            width: 100%;
+            max-height: 70vh;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Player</h1>
+    <div class="video-container">
+        <video id="video" controls></video>
+    </div>
+    <div class="controls">
+        <button onclick="loadVideo('ts', 'mp4')">Load MP4 to TS</button>
+        <button onclick="loadVideo('ts', 'mov')">Load MOV to TS</button>
+    </div>
+    <div id="status"></div>
+    <div id="log"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        let hls = null;
+        const baseUrl = window.location.origin;
+        const logElement = document.getElementById('log');
+        const statusElement = document.getElementById('status');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(message, isError = false) {
+            statusElement.textContent = message;
+            statusElement.className = isError ? 'error' : 'success';
+        }
+
+        function loadVideo(format, inputExt) {
+            if (hls) {
+                hls.destroy();
+            }
+
+            const playlistUrl = `${baseUrl}/output/playlist_${format}_${inputExt}.m3u8`;
+            log(`Loading playlist from: ${playlistUrl}`);
+            updateStatus(`Loading ${inputExt.toUpperCase()} to ${format.toUpperCase()} format...`);
+
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    backBufferLength: 90,
+                    maxBufferSize: 60 * 1000 * 1000, // 60MB
+                    maxBufferLength: 60,
+                    startFragPrefetch: true,
+                    testBandwidth: true,
+                    progressive: false,
+                    nudgeMaxRetry: 5,
+                    maxMaxBufferLength: 600,
+                    maxBufferHole: 0.5,
+                    highBufferWatchdogPeriod: 2,
+                    nudgeOffset: 0.1,
+                    startLevel: -1,
+                    abrEwmaDefaultEstimate: 500000,
+                    abrBandWidthFactor: 0.95,
+                    abrBandWidthUpFactor: 0.7,
+                    abrMaxWithRealBitrate: true,
+                    maxStarvationDelay: 4,
+                    maxLoadingDelay: 4,
+                    minAutoBitrate: 0,
+                    xhrSetup: function(xhr, url) {
+                        log(`Loading: ${url}`);
+                    }
+                });
+
+                hls.loadSource(playlistUrl);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    log('Manifest parsed successfully');
+                    video.play().catch(error => {
+                        updateStatus(`Playback error: ${error.message}`, true);
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        log(`Fatal error: ${data.type} - ${data.details}`);
+                        updateStatus(`Fatal error: ${data.details}`, true);
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                log('Network error, trying to recover...');
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                log('Media error, trying to recover...');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                log('Fatal error, cannot recover');
+                                hls.destroy();
+                                break;
+                        }
+                    } else {
+                        log(`Non-fatal error: ${data.type} - ${data.details}`);
+                    }
+                });
+
+                hls.on(Hls.Events.BUFFER_APPENDED, () => {
+                    log('Buffer appended');
+                });
+
+                hls.on(Hls.Events.BUFFER_APPENDING, () => {
+                    log('Buffer appending');
+                });
+
+                hls.on(Hls.Events.BUFFER_CREATED, () => {
+                    log('Buffer created');
+                });
+
+                hls.on(Hls.Events.BUFFER_FLUSHED, () => {
+                    log('Buffer flushed');
+                });
+
+                hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                    log(`Level loaded: ${data.level}`);
+                });
+
+                hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                    log(`Fragment loaded: ${data.frag.sn}`);
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // For Safari
+                video.src = playlistUrl;
+                video.addEventListener('loadedmetadata', () => {
+                    video.play().catch(error => {
+                        updateStatus(`Playback error: ${error.message}`, true);
+                    });
+                });
+            } else {
+                updateStatus('HLS is not supported in your browser', true);
+            }
+        }
+    </script>
+</body>
+</html>

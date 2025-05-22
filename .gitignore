@@ -38,9 +38,10 @@ ENV/
 *.jpeg
 *.png
 *.mp4
+*.mov
 *.avi
 *.m3u8
-output/*.ts
+output/
 
 # macos
 .DS_Store
