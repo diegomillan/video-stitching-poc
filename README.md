@@ -67,9 +67,6 @@ Then open [http://localhost:8000/player.html](http://localhost:8000/player.html)
 
 ## FAQ
 
-**Q: Why do I need to run a server?**
-A: HLS streaming only works over HTTP(S), not from the local filesystem.
-
 **Q: Can I scrub/seek in the video?**
 A: Yes, the player supports scrubbing within the stitched video.
 
@@ -81,4 +78,4 @@ A: Use `.ts` for HLS streaming (default) or `.mp4` if you need MP4 segments for 
 
 ---
 
-For further improvements, see the TODO section in the code or open an issue. 
+For further improvements, see the TODO section in the code or open an issue.
