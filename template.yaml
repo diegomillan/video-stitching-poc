@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Video Processing Lambda Function
+
+Globals:
+  Function:
+    Timeout: 900  # 15 minutes
+    MemorySize: 1024
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+
+Resources:
+  VideoProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function/app.lambda_handler
+      Environment:
+        Variables:
+          INPUT_DIR: /var/task/video-input
+          OUTPUT_DIR: /tmp/output
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        ProcessVideo:
+          Type: Api
+          Properties:
+            Path: /process
+            Method: post
+    Metadata:
+      MountPoints:
+        - SourceVolume: video-input
+          ContainerPath: /var/task/video-input
+          ReadOnly: true
+        - SourceVolume: output
+          ContainerPath: /tmp/output
+          ReadOnly: false
+      Volumes:
+        - Name: video-input
+          Host:
+            SourcePath: ./video-input
+        - Name: output
+          Host:
+            SourcePath: ./output
+
+Outputs:
+  VideoProcessingApi:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/process"
+  VideoProcessingFunction:
+    Description: Video Processing Lambda Function ARN
+    Value: !GetAtt VideoProcessingFunction.Arn 

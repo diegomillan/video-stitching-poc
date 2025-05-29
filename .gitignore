@@ -45,3 +45,12 @@ output/
 
 # macos
 .DS_Store
+
+# aws
+.aws-sam/
+.aws-sam-cli-managed-default/
+.aws-sam-cli-managed-default-1/
+.aws-sam-cli-managed-default-2/
+.aws-sam-cli-managed-default-3/
+.aws-sam-cli-managed-default-4/
+.aws-sam-cli-managed-default-5/

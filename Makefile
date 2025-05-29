@@ -1,4 +1,4 @@
-.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 download-samples sync serve simulate lint fix fix-extensions
+.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 process-ts-mov-ffmpeg download-samples sync serve simulate lint fix fix-extensions
 
 # Python environment
 UV = uv
@@ -38,6 +38,10 @@ process-ts-mp4:
 	@echo "Processing .mp4 files to HLS segments (TS format)..."
 	$(UV) run python -m src.video_stitching.local_processor --format ts --input-ext .mp4
 
+process-ts-mov-ffmpeg:
+	@echo "Processing .mov files to HLS segments (TS format) using ffmpeg-python..."
+	$(UV) run python -m src.video_stitching.local_processor_ffmpeg --format ts --input-ext .mov
+
 simulate:
 	$(UV) run python -m video_stitching.simulate_s3_event
 
@@ -72,6 +76,7 @@ help:
 	@echo "  make process-mp4    - Process videos into HLS segments (MP4 format only)"
 	@echo "  make process-ts-mov - Process .mov files into HLS segments (TS format)"
 	@echo "  make process-ts-mp4 - Process .mp4 files into HLS segments (TS format)"
+	@echo "  make process-ts-mov-ffmpeg - Process .mov files into HLS segments (TS format) using ffmpeg-python"
 	@echo "  make simulate       - Simulate S3 events for local testing"
 	@echo "  make download-samples - Download sample videos for testing"
 	@echo "  make serve          - Start a CORS-enabled server to view the video player"
@@ -79,3 +84,19 @@ help:
 	@echo "  make fix            - Run ruff to automatically fix issues"
 	@echo "  make fix-extensions - Fix video file extensions in input directory"
 	@echo "  make help           - Show this help message"
+
+sam-build:
+	@echo "Building SAM application..."
+	source ./sam-env.sh && sam build
+
+sam-start:
+	@echo "Starting SAM API locally..."
+	source ./sam-env.sh && sam local start-api
+
+sam-invoke:
+	@echo "Invoking SAM function..."
+	source ./sam-env.sh && sam local invoke VideoProcessingFunction -e event.json
+
+test-api:
+	@echo "Testing API endpoint..."
+	curl -X POST http://localhost:3000/process -H "Content-Type: application/json" -d '{"process_type": "process-ts-mp4"}'
