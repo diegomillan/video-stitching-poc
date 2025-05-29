@@ -65,17 +65,6 @@ Then open [http://localhost:8000/player.html](http://localhost:8000/player.html)
 - FFmpeg (must be installed and available in your PATH)
 - [uv](https://github.com/astral-sh/uv) for dependency management
 
-## FAQ
-
-**Q: Can I scrub/seek in the video?**
-A: Yes, the player supports scrubbing within the stitched video.
-
-**Q: Can I use my own videos?**
-A: Yes! Place your `.mp4` files in `video-input/` and run `make process`.
-
-**Q: Which segment format should I use?**
-A: Use `.ts` for HLS streaming (default) or `.mp4` if you need MP4 segments for specific requirements.
-
 ---
 
 For further improvements, see the TODO section in the code or open an issue.
