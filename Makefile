@@ -1,4 +1,4 @@
-.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 process-ts-mov-ffmpeg download-samples sync serve simulate lint fix fix-extensions
+.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 process-ts-mov-ffmpeg process-ts-mov-watermark process-ts-mov-text process-ts-mov-animated download-samples sync serve simulate lint fix fix-extensions
 
 # Python environment
 UV = uv
@@ -42,6 +42,18 @@ process-ts-mov-ffmpeg:
 	@echo "Processing .mov files to HLS segments (TS format) using ffmpeg-python..."
 	$(UV) run python -m src.video_stitching.local_processor_ffmpeg --format ts --input-ext .mov
 
+process-ts-mov-watermark:
+	@echo "Processing .mov files to HLS segments (TS format) with image watermark..."
+	$(UV) run python -m src.video_stitching.local_processor_ffmpeg --format ts --input-ext .mov --watermark-type image --watermark-path assets/watermark.png
+
+process-ts-mov-text:
+	@echo "Processing .mov files to HLS segments (TS format) with text watermark..."
+	$(UV) run python -m src.video_stitching.local_processor_ffmpeg --format ts --input-ext .mov --watermark-type text --watermark-text "WATERMARK" --watermark-x 50 --watermark-y 50
+
+process-ts-mov-animated:
+	@echo "Processing .mov files to HLS segments (TS format) with animated watermark..."
+	$(UV) run python -m src.video_stitching.local_processor_ffmpeg --format ts --input-ext .mov --watermark-type animated --watermark-path assets/watermark.png
+
 simulate:
 	$(UV) run python -m video_stitching.simulate_s3_event
 
@@ -77,6 +89,9 @@ help:
 	@echo "  make process-ts-mov - Process .mov files into HLS segments (TS format)"
 	@echo "  make process-ts-mp4 - Process .mp4 files into HLS segments (TS format)"
 	@echo "  make process-ts-mov-ffmpeg - Process .mov files into HLS segments (TS format) using ffmpeg-python"
+	@echo "  make process-ts-mov-watermark - Process .mov files into HLS segments (TS format) with image watermark"
+	@echo "  make process-ts-mov-text - Process .mov files into HLS segments (TS format) with text watermark"
+	@echo "  make process-ts-mov-animated - Process .mov files into HLS segments (TS format) with animated watermark"
 	@echo "  make simulate       - Simulate S3 events for local testing"
 	@echo "  make download-samples - Download sample videos for testing"
 	@echo "  make serve          - Start a CORS-enabled server to view the video player"

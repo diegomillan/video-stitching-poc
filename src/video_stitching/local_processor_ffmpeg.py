@@ -2,24 +2,27 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 import ffmpeg
+from .watermarks import WatermarkConfig, NoWatermark
 
 
 class LocalVideoProcessor:
     """Process videos locally using ffmpeg-python."""
 
-    def __init__(self, input_dir: str, output_dir: str):
+    def __init__(self, input_dir: str, output_dir: str, watermark: Optional[WatermarkConfig] = None):
         """
         Initialize the processor.
 
         Args:
             input_dir: Directory containing input videos
             output_dir: Directory for output files
+            watermark: Optional watermark configuration
         """
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.watermark = watermark or NoWatermark()
 
     def get_video_files(self, extension: str) -> List[Path]:
         """
@@ -72,34 +75,35 @@ class LocalVideoProcessor:
         playlist_path = self.output_dir / f"playlist_{format}_{input_ext[1:]}.m3u8"
 
         try:
-            # Create the ffmpeg command using ffmpeg-python
-            stream = (
-                ffmpeg
-                .input(str(concat_file), f='concat', safe=0)
-                .output(
-                    str(playlist_path),
-                    vcodec='libx264',  # Video codec
-                    acodec='aac',      # Audio codec
-                    video_bitrate='2M',
-                    audio_bitrate='128k',
-                    preset='fast',
-                    profile='high',
-                    level='3.0',
-                    maxrate='2M',
-                    bufsize='4M',
-                    g='60',
-                    sc_threshold='0',
-                    keyint_min='60',
-                    hls_time='6',
-                    hls_list_size='0',
-                    hls_segment_type=segment_type,
-                    hls_flags='independent_segments',
-                    hls_segment_filename=str(self.output_dir / segment_filename),
-                    hls_playlist_type='vod',
-                    f='hls'
-                )
-                .overwrite_output()
-            )
+            # Create the base ffmpeg command
+            stream = ffmpeg.input(str(concat_file), f='concat', safe=0)
+            
+            # Apply watermark if configured
+            stream = self.watermark.apply(stream)
+            
+            # Add output configuration
+            stream = stream.output(
+                str(playlist_path),
+                vcodec='libx264',  # Video codec
+                acodec='aac',      # Audio codec
+                video_bitrate='2M',
+                audio_bitrate='128k',
+                preset='fast',
+                profile='high',
+                level='3.0',
+                maxrate='2M',
+                bufsize='4M',
+                g='60',
+                sc_threshold='0',
+                keyint_min='60',
+                hls_time='6',
+                hls_list_size='0',
+                hls_segment_type=segment_type,
+                hls_flags='independent_segments',
+                hls_segment_filename=str(self.output_dir / segment_filename),
+                hls_playlist_type='vod',
+                f='hls'
+            ).overwrite_output()
 
             print("FFmpeg command:", ' '.join(stream.compile()))
 
@@ -119,14 +123,31 @@ class LocalVideoProcessor:
 def main():
     """Run the local processor."""
     import argparse
+    from .watermarks import ImageWatermark, TextWatermark, AnimatedWatermark, NoWatermark
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--format', choices=['ts', 'mp4'], default='ts',
                       help='Output format (ts or mp4)')
     parser.add_argument('--input-ext', choices=['.mp4', '.mov'], default='.mp4',
                       help='Input file extension (.mp4 or .mov)')
+    parser.add_argument('--watermark-type', choices=['none', 'image', 'text', 'animated'], default='none',
+                      help='Type of watermark to apply')
+    parser.add_argument('--watermark-path', help='Path to watermark image (for image or animated watermark)')
+    parser.add_argument('--watermark-text', help='Text for text watermark')
+    parser.add_argument('--watermark-x', type=int, default=10, help='X position of watermark')
+    parser.add_argument('--watermark-y', type=int, default=10, help='Y position of watermark')
     args = parser.parse_args()
 
-    processor = LocalVideoProcessor("video-input", "output")
+    # Create watermark configuration based on arguments
+    watermark = NoWatermark()
+    if args.watermark_type == 'image' and args.watermark_path:
+        watermark = ImageWatermark(args.watermark_path, args.watermark_x, args.watermark_y)
+    elif args.watermark_type == 'text' and args.watermark_text:
+        watermark = TextWatermark(args.watermark_text, args.watermark_x, args.watermark_y)
+    elif args.watermark_type == 'animated' and args.watermark_path:
+        watermark = AnimatedWatermark(args.watermark_path, args.watermark_x, args.watermark_y)
+
+    processor = LocalVideoProcessor("video-input", "output", watermark)
     try:
         output_path = processor.process_videos(args.format, args.input_ext)
         print(f"Processing complete. Output saved to: {output_path}")
