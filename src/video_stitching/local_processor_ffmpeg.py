@@ -77,17 +77,17 @@ class LocalVideoProcessor:
         try:
             # Create the base ffmpeg command
             stream = ffmpeg.input(str(concat_file), f='concat', safe=0)
-            
+
             # Split into video and audio streams
             video = stream.video
             audio = stream.audio
-            
+
             # Apply watermark to video stream
             if isinstance(self.watermark, NoWatermark):
                 video = video
             else:
                 video = self.watermark.apply(video)
-            
+
             # Combine video and audio back together
             stream = ffmpeg.output(
                 video,
