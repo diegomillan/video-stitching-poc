@@ -78,11 +78,20 @@ class LocalVideoProcessor:
             # Create the base ffmpeg command
             stream = ffmpeg.input(str(concat_file), f='concat', safe=0)
             
-            # Apply watermark if configured
-            stream = self.watermark.apply(stream)
+            # Split into video and audio streams
+            video = stream.video
+            audio = stream.audio
             
-            # Add output configuration
-            stream = stream.output(
+            # Apply watermark to video stream
+            if isinstance(self.watermark, NoWatermark):
+                video = video
+            else:
+                video = self.watermark.apply(video)
+            
+            # Combine video and audio back together
+            stream = ffmpeg.output(
+                video,
+                audio,
                 str(playlist_path),
                 vcodec='libx264',  # Video codec
                 acodec='aac',      # Audio codec

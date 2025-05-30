@@ -6,7 +6,7 @@ import ffmpeg
 
 class WatermarkConfig(ABC):
     """Base class for watermark configurations."""
-    
+
     @abstractmethod
     def apply(self, stream: ffmpeg.nodes.FilterableStream) -> ffmpeg.nodes.FilterableStream:
         """Apply the watermark to the video stream."""
@@ -15,7 +15,7 @@ class WatermarkConfig(ABC):
 
 class ImageWatermark(WatermarkConfig):
     """Image-based watermark configuration."""
-    
+
     def __init__(
         self,
         image_path: str,
@@ -25,7 +25,7 @@ class ImageWatermark(WatermarkConfig):
     ):
         """
         Initialize image watermark.
-        
+
         Args:
             image_path: Path to the watermark image
             x: X position of the watermark
@@ -48,7 +48,7 @@ class ImageWatermark(WatermarkConfig):
 
 class TextWatermark(WatermarkConfig):
     """Text-based watermark configuration."""
-    
+
     def __init__(
         self,
         text: str,
@@ -61,7 +61,7 @@ class TextWatermark(WatermarkConfig):
     ):
         """
         Initialize text watermark.
-        
+
         Args:
             text: Watermark text
             x: X position of the text
@@ -99,7 +99,7 @@ class TextWatermark(WatermarkConfig):
 
 class AnimatedWatermark(WatermarkConfig):
     """Animated watermark configuration with fade in/out."""
-    
+
     def __init__(
         self,
         image_path: str,
@@ -111,7 +111,7 @@ class AnimatedWatermark(WatermarkConfig):
     ):
         """
         Initialize animated watermark.
-        
+
         Args:
             image_path: Path to the watermark image
             x: X position of the watermark
@@ -133,9 +133,9 @@ class AnimatedWatermark(WatermarkConfig):
         fade_in = f"if(lt(t,{self.fade_in_duration}),t/{self.fade_in_duration}"
         fade_out = f"if(lt(t,{self.fade_in_duration + self.display_duration}),1"
         fade_out_end = f"if(lt(t,{self.fade_in_duration + self.display_duration + self.fade_out_duration}),1-(t-{self.fade_in_duration + self.display_duration})/{self.fade_out_duration},0)"
-        
+
         alpha_expr = f"{fade_in},{fade_out},{fade_out_end})"
-        
+
         return (
             stream
             .input(self.image_path)
@@ -144,8 +144,8 @@ class AnimatedWatermark(WatermarkConfig):
 
 
 class NoWatermark(WatermarkConfig):
-    """No watermark configuration."""
-    
+    """No watermark configuration"""
+
     def apply(self, stream: ffmpeg.nodes.FilterableStream) -> ffmpeg.nodes.FilterableStream:
         """Return the stream unchanged."""
-        return stream 
+        return stream
