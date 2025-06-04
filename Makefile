@@ -1,4 +1,4 @@
-.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 process-ts-mov-ffmpeg process-ts-mov-watermark process-ts-mov-text process-ts-mov-animated download-samples sync serve simulate lint fix fix-extensions
+.PHONY: setup clean process process-ts process-mp4 process-ts-mov process-ts-mp4 process-ts-mov-ffmpeg process-ts-mov-watermark process-ts-mov-text process-ts-mov-animated download-samples sync serve simulate lint fix fix-extensions validate validate-save
 
 # Python environment
 UV = uv
@@ -78,6 +78,14 @@ fix-extensions:
 	@echo "Fixing video file extensions in $(INPUT_DIR)..."
 	$(UV) run python -m src.video_stitching.fix_video_extensions
 
+validate:
+	@echo "Validating videos in $(INPUT_DIR)..."
+	$(UV) run python -m src.video_stitching.validate_videos --input-dir $(INPUT_DIR)
+
+validate-save:
+	@echo "Validating videos and saving results to validation-results.json..."
+	$(UV) run python -m src.video_stitching.validate_videos --input-dir $(INPUT_DIR) --output-file validation-results.json
+
 help:
 	@echo "Available commands:"
 	@echo "  make setup          - Set up the Python virtual environment using uv"
@@ -98,6 +106,8 @@ help:
 	@echo "  make lint           - Run ruff linter to check for issues"
 	@echo "  make fix            - Run ruff to automatically fix issues"
 	@echo "  make fix-extensions - Fix video file extensions in input directory"
+	@echo "  make validate       - Validate videos in the input directory"
+	@echo "  make validate-save  - Validate videos and save results to validation-results.json"
 	@echo "  make help           - Show this help message"
 
 sam-build:
