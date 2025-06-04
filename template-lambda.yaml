@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Video Processing Lambda Function with Validation
+
+Globals:
+  Function:
+    Timeout: 900  # 15 minutes
+    MemorySize: 2048  # Increased for video processing
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        INPUT_DIR: /var/task/video-input
+        OUTPUT_DIR: /tmp/output
+        METRICS_BUCKET: !Ref MetricsBucket
+        UPLOAD_BUCKET: !Ref UploadBucket
+        STREAM_BUCKET: !Ref StreamBucket
+
+Resources:
+  VideoProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: lambda_function/app.lambda_handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+              Resource:
+                - !Sub 'arn:aws:s3:::${UploadBucket}/*'
+                - !Sub 'arn:aws:s3:::${StreamBucket}/*'
+                - !Sub 'arn:aws:s3:::${MetricsBucket}/*'
+      Events:
+        ProcessVideo:
+          Type: Api
+          Properties:
+            Path: /process
+            Method: post
+        S3Upload:
+          Type: S3
+          Properties:
+            Bucket: !Ref UploadBucket
+            Events: s3:ObjectCreated:*
+    Metadata:
+      MountPoints:
+        - SourceVolume: video-input
+          ContainerPath: /var/task/video-input
+          ReadOnly: true
+        - SourceVolume: output
+          ContainerPath: /tmp/output
+          ReadOnly: false
+      Volumes:
+        - Name: video-input
+          Host:
+            SourcePath: ./video-input
+        - Name: output
+          Host:
+            SourcePath: ./output
+
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-upload-${AWS::Region}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  StreamBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-stream-${AWS::Region}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  MetricsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-metrics-${AWS::Region}
+
+  ValidationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-validation-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["VideoValidation", "InvalidVideos", "Service", "VideoProcessing"],
+                  ["VideoValidation", "BlackFrames", "Service", "VideoProcessing"],
+                  ["VideoValidation", "FrozenFrames", "Service", "VideoProcessing"]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Video Validation Metrics"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  VideoProcessingApi:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/process"
+  VideoProcessingFunction:
+    Description: Video Processing Lambda Function ARN
+    Value: !GetAtt VideoProcessingFunction.Arn
+  UploadBucketName:
+    Description: Upload bucket name
+    Value: !Ref UploadBucket
+  StreamBucketName:
+    Description: Stream bucket name
+    Value: !Ref StreamBucket
+  MetricsBucketName:
+    Description: Metrics bucket name
+    Value: !Ref MetricsBucket 
